@@ -1,3 +1,5 @@
+from typing import Union, Tuple
+
 import telebot
 import geonamescache
 
@@ -27,23 +29,38 @@ def start(message):
 @bot.message_handler(content_types=["text"])
 def answer(message):
     city = message.text
+    if city in used_cities:
+        bot.send_message(message.chat.id, "Такой город был!")
+        return None
+    if used_cities:
+        if city[0].lower() != used_cities[-1][-1].lower():
+            bot.send_message(message.chat.id, f"Я же сказал тебе на {used_cities[-1][-1]}")
+            return
     letter = message.text[-1]
     if not geo.search_cities(city):
         bot.send_message(message.chat.id, "Такого города не существует, выберай другой!")
     else:
         bot.send_message(message.chat.id, "Да, такой город есть")
         bot.send_message(message.chat.id, f"Я должен сказать город на букву: {letter}")
-        found_city = find_city(letter)
+        found_city, lat, long = find_city(letter)
         bot.send_message(message.chat.id, found_city)
+        bot.send_location(message.chat.id, lat,long)
         bot.send_message(message.chat.id, f"Тебе на {found_city[-1]}")
 
 
-def find_city(letter: str):
+
+def find_city(letter: str) -> Tuple[str | None, int, int]:
     for city in cities.values():
         names = city.get("alternatenames")
         for name in names:
             if name[0] == letter.upper():
-                return name
+                if name in used_cities:
+                    continue
+                used_cities.append(name)
+                shirota = city.get("latitude")
+                dolgota = city.get("longitude")
+                return name, shirota, dolgota
+    return None, 0, 0
 
 
 bot.infinity_polling()
