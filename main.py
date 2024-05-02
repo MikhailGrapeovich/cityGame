@@ -2,6 +2,7 @@ from typing import Union, Tuple
 
 import telebot
 import geonamescache
+import wikipedia
 
 TOKEN = "7066282025:AAG9Qp3QGT0Eg987XL1O7a596W07srignXI"
 bot = telebot.TeleBot(TOKEN)
@@ -44,9 +45,9 @@ def answer(message):
         bot.send_message(message.chat.id, f"Я должен сказать город на букву: {letter}")
         found_city, lat, long = find_city(letter)
         bot.send_message(message.chat.id, found_city)
-        bot.send_location(message.chat.id, lat,long)
+        bot.send_location(message.chat.id, lat, long)
+        bot.send_message(message.chat.id, get_city_info(found_city))
         bot.send_message(message.chat.id, f"Тебе на {found_city[-1]}")
-
 
 
 def find_city(letter: str) -> Tuple[str | None, int, int]:
@@ -61,6 +62,16 @@ def find_city(letter: str) -> Tuple[str | None, int, int]:
                 dolgota = city.get("longitude")
                 return name, shirota, dolgota
     return None, 0, 0
+
+
+def get_city_info(city):
+    wikipedia.set_lang('ru')
+    wiki_response = wikipedia.search(city)
+    if wiki_response:
+        wiki_city = wikipedia.summary(wiki_response[0])
+        return wiki_city
+    else:
+        return f"Информация о {city} не найдена"
 
 
 bot.infinity_polling()
