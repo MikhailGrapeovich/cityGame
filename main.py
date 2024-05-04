@@ -1,5 +1,6 @@
 from typing import Union, Tuple
 
+import os.path
 import telebot
 import geonamescache
 import wikipedia
@@ -9,6 +10,9 @@ bot = telebot.TeleBot(TOKEN)
 used_cities = []
 geo = geonamescache.GeonamesCache()
 cities = geo.get_cities()
+wrong_letters = ["ё", "й", "ь", "ъ"]
+write_file_extensions = [".jpeg", ".jpg", ".png"]
+
 
 
 @bot.message_handler(commands=["start"])
@@ -30,6 +34,7 @@ def start(message):
 @bot.message_handler(content_types=["text"])
 def answer(message):
     city = message.text
+    letter = message.text[-1]
     if city in used_cities:
         bot.send_message(message.chat.id, "Такой город был!")
         return None
@@ -37,7 +42,8 @@ def answer(message):
         if city[0].lower() != used_cities[-1][-1].lower():
             bot.send_message(message.chat.id, f"Я же сказал тебе на {used_cities[-1][-1]}")
             return
-    letter = message.text[-1]
+    if letter in wrong_letters:
+        letter = message.text[-2]
     if not geo.search_cities(city):
         bot.send_message(message.chat.id, "Такого города не существует, выберай другой!")
     else:
@@ -47,6 +53,12 @@ def answer(message):
         bot.send_message(message.chat.id, found_city)
         bot.send_location(message.chat.id, lat, long)
         bot.send_message(message.chat.id, get_city_info(found_city))
+        image = get_image(found_city)
+        print(image)
+        if image is None:
+            bot.send_message(message.chat.id, "фото не найдено")
+        else:
+            bot.send_photo(message.chat.id,image)
         bot.send_message(message.chat.id, f"Тебе на {found_city[-1]}")
 
 
@@ -54,16 +66,25 @@ def find_city(letter: str) -> Tuple[str | None, int, int]:
     for city in cities.values():
         names = city.get("alternatenames")
         for name in names:
-            if name[0] == letter.upper():
-                if name in used_cities:
-                    continue
-                used_cities.append(name)
-                shirota = city.get("latitude")
-                dolgota = city.get("longitude")
-                return name, shirota, dolgota
+            if name:
+                if name[0] == letter.upper():
+                    if name in used_cities:
+                        continue
+                    used_cities.append(name)
+                    shirota = city.get("latitude")
+                    dolgota = city.get("longitude")
+                    return name, shirota, dolgota
     return None, 0, 0
 
-
+def get_image(city):
+    wikipedia.set_lang('ru')
+    wiki_response = wikipedia.search(city)
+    if wiki_response:
+        wiki_page = wikipedia.page(wiki_response[0])
+        for wiki_image in wiki_page.images:
+            if os.path.splitext(wiki_image)[1] in write_file_extensions:
+                return wiki_image
+    return None
 def get_city_info(city):
     wikipedia.set_lang('ru')
     wiki_response = wikipedia.search(city)
