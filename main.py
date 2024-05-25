@@ -1,5 +1,6 @@
 from typing import Union, Tuple
 
+import requests
 import os.path
 import telebot
 import geonamescache
@@ -12,21 +13,24 @@ geo = geonamescache.GeonamesCache()
 cities = geo.get_cities()
 wrong_letters = ["ё", "й", "ь", "ъ"]
 write_file_extensions = [".jpeg", ".jpg", ".png"]
+API_KEY = "7de58748f998310072093e827a132fbd"
+guide_url = "https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude={part}&appid={API key}"
 
-
-
+def get_weather(lat, lon):
+    response = requests.get(f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={API_KEY}")
+    print(response.text)
 @bot.message_handler(commands=["start"])
 def start(message):
     bot.send_message(message.chat.id, "Игра начата, называйте город первым")
 
 
 @bot.message_handler(commands=["stop"])
-def start(message):
+def stop(message):
     bot.send_message(message.chat.id, "Игра остановлена")
 
 
 @bot.message_handler(commands=["help"])
-def start(message):
+def help(message):
     bot.send_message(message.chat.id,
                      "Напишите '/start' чтобы начать игру,\nили воспользуйтесь командой '/stop' чтобы остановить игру.\n")
 
@@ -50,11 +54,11 @@ def answer(message):
         bot.send_message(message.chat.id, "Да, такой город есть")
         bot.send_message(message.chat.id, f"Я должен сказать город на букву: {letter}")
         found_city, lat, long = find_city(letter)
+        get_weather(lat, long)
         bot.send_message(message.chat.id, found_city)
         bot.send_location(message.chat.id, lat, long)
         bot.send_message(message.chat.id, get_city_info(found_city))
         image = get_image(found_city)
-        print(image)
         if image is None:
             bot.send_message(message.chat.id, "фото не найдено")
         else:
@@ -76,6 +80,15 @@ def find_city(letter: str) -> Tuple[str | None, int, int]:
                     return name, shirota, dolgota
     return None, 0, 0
 
+def decorator_wiki_request(func):
+    def wrapper(city, *args, **kwargs):
+        try:
+            return func(city, *args, **kwargs)
+        except (wikipedia.DisambiguationError, wikipedia.HTTPTimeoutError, wikipedia.PageError, wikipedia.RedirectError, wikipedia.WikipediaException):
+            return None
+    return wrapper
+
+@decorator_wiki_request
 def get_image(city):
     wikipedia.set_lang('ru')
     wiki_response = wikipedia.search(city)
@@ -85,6 +98,7 @@ def get_image(city):
             if os.path.splitext(wiki_image)[1] in write_file_extensions:
                 return wiki_image
     return None
+@decorator_wiki_request
 def get_city_info(city):
     wikipedia.set_lang('ru')
     wiki_response = wikipedia.search(city)
