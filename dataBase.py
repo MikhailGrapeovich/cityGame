@@ -18,7 +18,7 @@ def connection_db(func):
 
 
 @connection_db
-def start():
+def start(cur):
     cur.execute("CREATE TABLE IF NOT EXISTS users(chat_id INT PRIMARY KEY, score INT, cities TEXT)")
 
 
