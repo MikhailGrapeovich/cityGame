@@ -24,7 +24,6 @@ def add_db(chat_id,score,cities, cur):
 @connection_db
 def get_all_db(cur):
     cur.execute(f"SELECT * FROM users")
-    print(cur.fetchone())
     return cur.fetchall()
 
 @connection_db
@@ -35,5 +34,7 @@ def get_db(chat_id, cur):
 def update_db(chat_id,score,cities, cur):
     cur.execute(f"UPDATE users SET score={score}, cities='{cities}' WHERE chat_id={chat_id}")
 
-update_db(183,"serfee", 2352352523)
-print(get_db(93))
+@connection_db
+def delete(chat_id, cur):
+    cur.execute(f"DELETE FROM users WHERE chat_id = {chat_id}")
+#delete(1269131474)
